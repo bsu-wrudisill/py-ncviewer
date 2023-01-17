@@ -1,0 +1,3 @@
+# a project to make a really basic and quick nc plotter for viewing 
+netcdf files. designed to be a command line application and similar to ncview 
+for this kind of thing 
