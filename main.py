@@ -3,7 +3,7 @@
 
 
 import sys
-from metaread import get_varnames, concatenator
+from metaread import get_varnames
 from guimaker import *
 import argparse
 
@@ -15,7 +15,9 @@ if __name__ == "__main__":
     parser.add_argument('filenames', nargs='*')           # positional argument
     args = parser.parse_args()
 #    ds = concatenator(args.filenames)
+#    thefile = '/Volumes/Transcend/sail_data/HRRR_data/t2m/hrrr_t2m_2022-01-22_0500.nc'
 
-    thefile = '/Volumes/Transcend/sail_data/HRRR_data/t2m/hrrr_t2m_2022-01-22_0500.nc'
+    print(args.filenames)
+
     app = App(args.filenames) 
     app.mainloop()

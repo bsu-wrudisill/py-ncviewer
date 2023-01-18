@@ -14,7 +14,9 @@ def get_varnames(flist):
 
 def xreader(thefile):
     if len(thefile) == 1:
-        return xr.open_dataset(thefile)
+        # 'thefile' will be a list, and open_dataset needs a string
+        return xr.open_dataset(thefile[0],engine="netcdf4")
+
     else:
         return xr.open_mfdataset(thefile, 
                                  engine="netcdf4", 
