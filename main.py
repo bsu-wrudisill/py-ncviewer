@@ -1,23 +1,21 @@
 # import all classes/methods
 # from the tkinter module
+
+
 import sys
-from metaread import get_varnames
-from guimodule import build_gui
-import xarray as xr 
-import matplotlib.pyplot as plt 
+from metaread import get_varnames, concatenator
+from guimaker import *
+import argparse
 
 
-thefile = sys.argv[1]
+if __name__ == "__main__":
+    # thefile = '/Users/william/Desktop/fastsled.level1.asfs50-picnic.20211012.000000.nc'
+    # /Volumes/Transcend/sail_data/HRRR_data/t2m
+    parser = argparse.ArgumentParser()
+    parser.add_argument('filenames', nargs='*')           # positional argument
+    args = parser.parse_args()
+#    ds = concatenator(args.filenames)
 
-buttons = get_varnames(thefile)
-xrds = xr.open_dataset(thefile)
-
-window = build_gui(buttons, xrds)
-
-# run the gui
-window.mainloop()
-
-
-
-
-#if __name__ == "__main__":#
+    thefile = '/Volumes/Transcend/sail_data/HRRR_data/t2m/hrrr_t2m_2022-01-22_0500.nc'
+    app = App(args.filenames) 
+    app.mainloop()

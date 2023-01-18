@@ -18,6 +18,8 @@ def build_gui(buttons,xrda):
 
     # go through each button 
     def cmd(x):
+        # clear the existing canvas...
+        plt.clf()
         xrda.get(x).plot()
         plt.show()
 
