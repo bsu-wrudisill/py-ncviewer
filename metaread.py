@@ -23,6 +23,30 @@ def xreader(thefile):
                                  combine="by_coords", 
                                  parallel=True)
 
+
+def get_dimensions(ds):
+    # ds is an already opened data array or dataset 
+    var4d = []
+    var3d = []
+    var2d = []
+    var1d = []
+
+    # loop thru them 
+    for var in ds.data_vars:
+        if len(ds[var].shape) == 1:
+            var1d.append(var)
+        if len(ds[var].shape) == 2:
+            var1d.append(var)
+        if len(ds[var].shape) == 3:
+            var1d.append(var)
+        if len(ds[var].shape) == 4:
+            var1d.append(var)
+            
+    return {"4d":var4d,
+            "3d":var3d,
+            "2d":var2d,
+            "1d":var1d}
     
 if __name__ == "__main__":
-    pass
+    ds = xreader("/Volumes/Transcend/sail_data/HRRR_data/t2m/hrrr_t2m_2022-02-03_0300.nc")      
+    get_dimensions(ds)
