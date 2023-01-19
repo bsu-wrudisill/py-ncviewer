@@ -17,7 +17,7 @@ if __name__ == "__main__":
 #    ds = concatenator(args.filenames)
 #    thefile = '/Volumes/Transcend/sail_data/HRRR_data/t2m/hrrr_t2m_2022-01-22_0500.nc'
 
-    print(args.filenames)
+#    print(args.filenames)
 
     app = App(args.filenames) 
     app.mainloop()

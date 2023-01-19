@@ -36,11 +36,11 @@ def get_dimensions(ds):
         if len(ds[var].shape) == 1:
             var1d.append(var)
         if len(ds[var].shape) == 2:
-            var1d.append(var)
+            var2d.append(var)
         if len(ds[var].shape) == 3:
-            var1d.append(var)
+            var3d.append(var)
         if len(ds[var].shape) == 4:
-            var1d.append(var)
+            var4d.append(var)
             
     return {"4d":var4d,
             "3d":var3d,
@@ -49,4 +49,4 @@ def get_dimensions(ds):
     
 if __name__ == "__main__":
     ds = xreader("/Volumes/Transcend/sail_data/HRRR_data/t2m/hrrr_t2m_2022-02-03_0300.nc")      
-    get_dimensions(ds)
+    dims = get_dimensions(ds)
