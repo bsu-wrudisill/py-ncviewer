@@ -2,6 +2,7 @@ import customtkinter
 import tkinter as tk
 from tkinter import ttk
 from metaread import get_varnames, xreader, get_dimensions
+import numpy as np 
 
 import matplotlib.pyplot as plt 
 import matplotlib
@@ -113,17 +114,53 @@ class ButtonMaker(tk.Frame):
             #reset_axsize(self.original_size[1], self.original_size[0], self.canvasobject.ax)
 
         # get the variable 
-        plotting_variable = self.xrds.get(x).isel()#time=self.move_buttons.thetime.get())
+        plotting_variable = self.xrds.get(x) #.isel()#time=self.move_buttons.thetime.get())
+
+
+        # MOVE THIS SOMEWHERE ELSE SO THAT IT DOESNT HAPPEN EVERY CLICK
+        one_len_list = {}
+        for i,k in enumerate(plotting_variable.shape):
+            if k == 1:
+                one_len_list[plotting_variable.dims[i]] = 0
+
+        # just go ahead and select these -- makes dim size smaller 
+        plotting_variable = plotting_variable.sel(**one_len_list)
+
+# now check if there is a time like dimension
+# time_coord = []
+# possible_time_types = [np.dtype("<M8[ns]")] 
+# for c in plotting_variable.coords:
+# f c.dtype in possible_time_types
+        
+        
+        # select the concat dim if it's in there. ..
+        if "CONCAT_DIM" in list(plotting_variable.dims):
+            plotting_variable = plotting_variable.isel(CONCAT_DIM=self.move_buttons.thetime.get())
+
+        # get some info about the plotting variable ...        
+        if len(plotting_variable.shape) > 5:
+            pass
+
+        if len(plotting_variable.shape) == 4:
+            pass 
+
+        if len(plotting_variable.shape) == 3: 
+            plotting_variable.plot(ax=self.canvasobject.ax, 
+                                   add_colorbar=False)
+            self.canvasobject.canvas.draw()
 
         if len(plotting_variable.shape) == 2: 
-            plotting_variable.plot(ax=self.canvasobject.ax, add_colorbar=False)
+            plotting_variable.plot(ax=self.canvasobject.ax, 
+                                   add_colorbar=False)
             self.canvasobject.canvas.draw()
-        else:
+
+        if len(plotting_variable.shape) == 1: 
             plotting_variable.plot(ax=self.canvasobject.ax)
             self.canvasobject.canvas.draw()
 
+
         # print the click value 
-        # print(self.move_buttons.thetime.get())
+        # print()
 
 
 class cbmaker(tk.Frame):
@@ -281,18 +318,18 @@ class App(customtkinter.CTk):
             scrollable_body1.update()
 
         # DIMENSIONS
-        frame01 = tk.Frame(self)#  width=.2*window_width, height=.9*window_height)
-        frame01.pack(**ipadding,  expand=False, fill=tk.Y, side=tk.LEFT)
-        scrollable_body01    = Scrollable(frame01)
-        self.button_frame_01 = ButtonMaker(scrollable_body01,
-                                           column_title='Dimensions',
-                                           buttons=['button', 'button', 'button'], 
-                                           xrds=xrds,
-                                           canvasobject=mapper,
-                                           move_buttons=move_buttons)
+        # frame01 = tk.Frame(self)#  width=.2*window_width, height=.9*window_height)
+        # frame01.pack(**ipadding,  expand=False, fill=tk.Y, side=tk.LEFT)
+        # scrollable_body01    = Scrollable(frame01)
+        # self.button_frame_01 = ButtonMaker(scrollable_body01,
+        #                                    column_title='Dimensions',
+        #                                    buttons=['button', 'button', 'button'], 
+        #                                    xrds=xrds,
+        #                                    canvasobject=mapper,
+        #                                    move_buttons=move_buttons)
 
-        self.button_frame_01.pack()
-        scrollable_body01.update()
+#        self.button_frame_01.pack()
+#        scrollable_body01.update()
         mapper(self)
        
         ### ADD MPL PLOT 
