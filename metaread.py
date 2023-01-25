@@ -1,5 +1,6 @@
 import xarray as xr 
 import argparse
+import glob 
 
 def get_varnames(flist):
     if type(flist) == list:
@@ -12,16 +13,34 @@ def get_varnames(flist):
     ds.close()
 
 
-def xreader(thefile):
+
+def xreader(thefile, **kwargs):
+    
+    # single file case 
     if len(thefile) == 1:
         # 'thefile' will be a list, and open_dataset needs a string
         return xr.open_dataset(thefile[0],engine="netcdf4")
 
+    # multiple files case 
     else:
-        return xr.open_mfdataset(thefile, 
-                                 engine="netcdf4", 
-                                 combine="by_coords", 
-                                 parallel=True)
+
+        # see if we can concat normally 
+        try:
+            xroptions = {"engine":"netcdf4",
+                         "combine":"by_coords",
+                         "parallel":True}
+
+            xroptions.update(**kwargs)
+            return xr.open_mfdataset(thefile, 
+                                    **xroptions)
+
+        except ValueError as e:
+            print(e)
+            xroptions.update({"combine":"nested",
+                              "concat_dim":"CONCAT_DIM"})
+                        
+            return xr.open_mfdataset(thefile, 
+                                    **xroptions)
 
 
 def get_dimensions(ds):
@@ -48,5 +67,12 @@ def get_dimensions(ds):
             "1d":var1d}
     
 if __name__ == "__main__":
-    ds = xreader("/Volumes/Transcend/sail_data/HRRR_data/t2m/hrrr_t2m_2022-02-03_0300.nc")      
-    dims = get_dimensions(ds)
+#    ds = xreader("/Volumes/Transcend/sail_data/HRRR_data/t2m/hrrr_t2m_2022-02-03_0300.nc")      
+
+ 
+
+    thefiles = glob.glob("/Volumes/Transcend/sail_data/HRRR_data/t2m/hrrr_t2m_2022-01*")
+    ds = xreader(thefiles)
+
+ 
+ #    dims = get_dimensions(ds)

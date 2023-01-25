@@ -10,16 +10,27 @@ from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationTool
 from matplotlib.figure import Figure
 
 
-window_width = 1000
-window_height = 700
+window_width = 1800
+window_height = 2200
+
+# # for plots...
+# def reset_axsize(w,h, ax=None):
+#     """ w, h: width, height in inches """
+#     if not ax: ax=plt.gca()
+#     l = ax.figure.subplotpars.left
+#     r = ax.figure.subplotpars.right
+#     t = ax.figure.subplotpars.top
+#     b = ax.figure.subplotpars.bottom
+#     figw = float(w)/(r-l)
+#     figh = float(h)/(t-b)
+#     ax.figure.set_size_inches(figw, figh)
 
 
-
-def set_mousewheel(widget, command):
-    """Activate / deactivate mousewheel scrolling when 
-    cursor is over / not over the widget respectively."""
-    widget.bind("<Enter>", lambda _: widget.bind_all('<MouseWheel>', command))
-    widget.bind("<Leave>", lambda _: widget.unbind_all('<MouseWheel>'))
+# def set_mousewheel(widget, command):
+#     """Activate / deactivate mousewheel scrolling when 
+#     cursor is over / not over the widget respectively."""
+#     widget.bind("<Enter>", lambda _: widget.bind_all('<MouseWheel>', command))
+#     widget.bind("<Leave>", lambda _: widget.unbind_all('<MouseWheel>'))
 
 
 
@@ -35,7 +46,7 @@ class Scrollable(tk.Frame):
         scrollbar = tk.Scrollbar(frame)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y, expand=True)
 
-        self.canvas = customtkinter.CTkCanvas(frame, width=window_width*.2, height=80, yscrollcommand=scrollbar.set)
+        self.canvas = customtkinter.CTkCanvas(frame, width=window_width*.1, height=80, yscrollcommand=scrollbar.set)
         self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         
         scrollbar.config(command=self.canvas.yview)
@@ -70,12 +81,18 @@ class ButtonMaker(tk.Frame):
                  buttons=None,
                  header_name=None, 
                  canvasobject=None,
+                 clickers=None,
+                 move_buttons=None,
                  **kwargs):
 
         super().__init__(*args, **kwargs)
         self.xrds = xrds 
         self.canvasobject = canvasobject
+        self.original_size = canvasobject.fig.get_size_inches()
+        self.clickers = clickers 
+        self.move_buttons = move_buttons
 
+        # now label stuff...
         lbl=tk.Label(self, text=column_title, bg='red')
 #        lbl.grid(row=0, column=0, pady=1, fill=tk.BOTH)
         lbl.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
@@ -86,29 +103,71 @@ class ButtonMaker(tk.Frame):
             self.button_x = ttk.Button(self, text=str(button), command=_cmd)
 #            self.button_x.grid(row=i+1, column=0, padx=1, pady=1, fill=tk.BOTH)
             self.button_x.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        
 
     def button_event(self, x):
+        # get the value of the previous and next buttons
         # clear the existing canvas...
-        if self.xrds is not None:
-            self.xrds.get(x).plot(ax=self.canvasobject.ax)
+        #if len(self.canvasobject.fig.axes) > 1:
+        #    self.canvasobject.fig.axes[1].remove()
+            #reset_axsize(self.original_size[1], self.original_size[0], self.canvasobject.ax)
+
+        # get the variable 
+        plotting_variable = self.xrds.get(x).isel()#time=self.move_buttons.thetime.get())
+
+        if len(plotting_variable.shape) == 2: 
+            plotting_variable.plot(ax=self.canvasobject.ax, add_colorbar=False)
             self.canvasobject.canvas.draw()
         else:
-            print("no data loaded to plot")
+            plotting_variable.plot(ax=self.canvasobject.ax)
+            self.canvasobject.canvas.draw()
 
+        # print the click value 
+        # print(self.move_buttons.thetime.get())
+
+
+class cbmaker(tk.Frame):
+    def __init__(self, 
+                *args, 
+                **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.spamVar = tk.StringVar()
+        self.spamCB  = tk.Checkbutton(self, text='A', variable=self.spamVar, onvalue='yes', offvalue='no')
+
+class MoveButtoner(tk.Frame):
+    def __init__(self, frame):
+        super().__init__()#K*args, **kwargs)
+        self.thetime = tk.IntVar()
+        self.thetime.set(0)
+
+        _cmd_nxt = lambda x=1 : self.move_timestep(x)
+        _cmd_prv = lambda x=-1 : self.move_timestep(x)
+
+        self.next = ttk.Button(frame, text='Next', command=_cmd_nxt)
+        self.prev = ttk.Button(frame, text='Prev', command=_cmd_prv)
+        self.next.pack(fill=tk.BOTH, expand=True, side='left')
+        self.prev.pack(fill=tk.BOTH, expand=True, side='left')
+        
+    def move_timestep(self,x):    
+       newtime = x + self.thetime.get()
+       self.thetime.set(newtime)
+       print(self.thetime.get())
 
 class MplMaker(tk.Frame):
 
     def __init__(self, frame):
-#        super().__init__(*args, **kwargs)
-
+        # super().__init__(*args, **kwargs)
         self.fig = Figure(dpi=100)
         self.ax = self.fig.add_subplot(111)
-#        ax.plot([1,2,3,4,5,6,7,8],[5,6,1,3,8,9,3,5])
         self.canvas = FigureCanvasTkAgg(self.fig, frame)
 
     def __call__(self, frame):
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+        self.canvas.get_tk_widget().pack(side=tk.BOTTOM, 
+                                         fill=tk.BOTH, 
+                                         expand=True)
+
         self.toolbar = NavigationToolbar2Tk(self.canvas, frame)
         self.toolbar.update()
         self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
@@ -116,9 +175,10 @@ class MplMaker(tk.Frame):
 
 
 class App(customtkinter.CTk):
+
     def __init__(self, thefile):
         super().__init__()
-        ipadding = {'ipadx': .1, 'ipady': .1}
+        ipadding = {'ipadx': 1, 'ipady': .1}
 
         # make the screen show up so it is centered on the screen 
         screen_width = self.winfo_screenwidth()
@@ -130,24 +190,34 @@ class App(customtkinter.CTk):
 #        self.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
         self.thefile=thefile
        
+
         # read in the xarray stuff and make the buttons 
         datavars, coords = get_varnames(thefile)
         xrds = xreader(thefile) 
         dimensions = get_dimensions(xrds)
         mapper = MplMaker(self)
 
-
         # Label across the entire top of the frame 
         if type(thefile) == list:
             headerlabel = ".".join(thefile[0].split(".")[0:-1])+"*"
         else:
             headerlabel = thefile
-
         label1 = tk.Label(self, text=headerlabel, bg="green", fg="white")
         label1.pack(**{'ipadx': 5, 'ipady': 5}, fill=tk.X)
 
+    
+        # check buttons 
+        frame02 = tk.Frame(self,  bg='purple', width=100, height=100)
+        frame02.pack(fill=tk.BOTH, expand=True, side=tk.BOTTOM)              
+        checkbuttons1 = ttk.Checkbutton(frame02, text='foo')
+        # checkbuttons1 = cbmaker(frame02)
+        checkbuttons1.pack(side=tk.BOTTOM)
 
+        frame00 = tk.Frame(self,  bg='orange', width=100, height=100)
+        frame00.pack(fill=tk.BOTH, expand=True, side=tk.TOP)              
+        move_buttons = MoveButtoner(frame00)
 
+        
         # 4d variables 
         if len(dimensions['4d']) > 0:
             frame4 = tk.Frame(self)
@@ -157,8 +227,11 @@ class App(customtkinter.CTk):
                                               column_title='4dVars',
                                               buttons=dimensions['4d'], 
                                               xrds=xrds,
-                                              canvasobject=mapper)
-            self.button_frame_4.pack()
+                                              canvasobject=mapper,
+                                              clickers=checkbuttons1,
+                                              move_buttons=move_buttons)
+
+            self.button_frame_4.pack(fill=tk.Y)
             scrollable_body4.update()
 
 
@@ -171,9 +244,11 @@ class App(customtkinter.CTk):
                                               column_title='3dVars',
                                               buttons=dimensions['3d'], 
                                               xrds=xrds,
-                                              canvasobject=mapper)
+                                              canvasobject=mapper,
+                                              clickers=checkbuttons1,
+                                              move_buttons=move_buttons)
             self.button_frame_3.pack()
-            scrollable_body2.update()
+            scrollable_body3.update()
 
 
         # 2d variables 
@@ -185,7 +260,9 @@ class App(customtkinter.CTk):
                                               column_title='2dVars',
                                               buttons=dimensions['2d'], 
                                               xrds=xrds,
-                                              canvasobject=mapper)                                              
+                                              canvasobject=mapper,
+                                              clickers=checkbuttons1,
+                                              move_buttons=move_buttons)                                      
             self.button_frame_2.pack()
             scrollable_body2.update()
 
@@ -198,18 +275,26 @@ class App(customtkinter.CTk):
                                               column_title='1dVars',
                                               buttons=dimensions['1d'], 
                                               xrds=xrds,
-                                              canvasobject=mapper)                                              
+                                              canvasobject=mapper,
+                                              move_buttons=move_buttons)                                       
             self.button_frame_1.pack()
             scrollable_body1.update()
 
+        # DIMENSIONS
+        frame01 = tk.Frame(self)#  width=.2*window_width, height=.9*window_height)
+        frame01.pack(**ipadding,  expand=False, fill=tk.Y, side=tk.LEFT)
+        scrollable_body01    = Scrollable(frame01)
+        self.button_frame_01 = ButtonMaker(scrollable_body01,
+                                           column_title='Dimensions',
+                                           buttons=['button', 'button', 'button'], 
+                                           xrds=xrds,
+                                           canvasobject=mapper,
+                                           move_buttons=move_buttons)
+
+        self.button_frame_01.pack()
+        scrollable_body01.update()
         mapper(self)
        
-        # DIMENSIONS
-        # frame01 = ttk.Frame(self)#  width=.2*window_width, height=.9*window_height)
-        # frame01.pack(**ipadding, expand=True, fill=tk.BOTH, side=tk.LEFT)
-        # scrollable_body01 = Scrollable(frame01)
-
-
         ### ADD MPL PLOT 
 
 
