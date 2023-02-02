@@ -1,3 +1,5 @@
+from tkinter import *
+from tkinter import ttk
 import customtkinter
 import tkinter as tk
 from tkinter import ttk
@@ -8,31 +10,12 @@ import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use("TkAgg")
 from matplotlib.backends.backend_tkagg import (FigureCanvasTkAgg, NavigationToolbar2Tk)
-from matplotlib.figure import Figure
+#from matplotlib.figure import Figure
 
 
 window_width = 1800
-window_height = 2200
-
-# # for plots...
-# def reset_axsize(w,h, ax=None):
-#     """ w, h: width, height in inches """
-#     if not ax: ax=plt.gca()
-#     l = ax.figure.subplotpars.left
-#     r = ax.figure.subplotpars.right
-#     t = ax.figure.subplotpars.top
-#     b = ax.figure.subplotpars.bottom
-#     figw = float(w)/(r-l)
-#     figh = float(h)/(t-b)
-#     ax.figure.set_size_inches(figw, figh)
-
-
-# def set_mousewheel(widget, command):
-#     """Activate / deactivate mousewheel scrolling when 
-#     cursor is over / not over the widget respectively."""
-#     widget.bind("<Enter>", lambda _: widget.bind_all('<MouseWheel>', command))
-#     widget.bind("<Leave>", lambda _: widget.unbind_all('<MouseWheel>'))
-
+window_height = 2500
+plt.style.use('dark_background')
 
 
 class Scrollable(tk.Frame):
@@ -43,13 +26,13 @@ class Scrollable(tk.Frame):
     """
 
     def __init__(self, frame):
+        # make the scrollbar thing 
+        scrollbar = tk.Scrollbar(frame, width=4)
+        scrollbar.pack(side=tk.RIGHT, fill=tk.Y)# expand=True)
 
-        scrollbar = tk.Scrollbar(frame)
-        scrollbar.pack(side=tk.RIGHT, fill=tk.Y, expand=True)
-
-        self.canvas = customtkinter.CTkCanvas(frame, width=window_width*.1, height=80, yscrollcommand=scrollbar.set)
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        
+        # create hte canvase and add scrolling command 
+        self.canvas = tk.Canvas(frame, yscrollcommand=scrollbar.set, width=80)  # WE HAVE TO SET THIS MANUALLY!!!!
+        self.canvas.pack(expand=True)
         scrollbar.config(command=self.canvas.yview)
         self.canvas.bind('<Configure>', self.__fill_canvas)
 
@@ -57,14 +40,13 @@ class Scrollable(tk.Frame):
         tk.Frame.__init__(self, frame)
 
         # # assign this obj (the inner frame) to the windows item of the canvas
-        self.windows_item = self.canvas.create_window(0, 0, window=self, anchor=tk.NW)
+        self.windows_item = self.canvas.create_window(0, 0, window=self)#, anchor=tk.NW)
         self.canvas.bind_all('<MouseWheel>', lambda event: self.canvas.yview_scroll(int(-1*(event.delta/120)), "units"))
 
     def __fill_canvas(self, event):
         "Enlarge the windows item to the canvas width"
-
         canvas_width = event.width
-        self.canvas.itemconfig(self.windows_item, width = canvas_width)
+        self.canvas.itemconfig(self.windows_item, width=canvas_width)
 
     def update(self):
         "Update the canvas and the scrollregion"
@@ -89,21 +71,16 @@ class ButtonMaker(tk.Frame):
         super().__init__(*args, **kwargs)
         self.xrds = xrds 
         self.canvasobject = canvasobject
-        self.original_size = canvasobject.fig.get_size_inches()
+#        self.original_size = canvasobject.fig.get_size_inches()
         self.clickers = clickers 
         self.move_buttons = move_buttons
 
-        # now label stuff...
-        lbl=tk.Label(self, text=column_title, bg='red')
-#        lbl.grid(row=0, column=0, pady=1, fill=tk.BOTH)
-        lbl.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-        for i, button in enumerate(buttons):
+        # go through each varianble and make a button
+        for i, button in enumerate(buttons):   
             _cmd = lambda x=button: self.button_event(x)
 
-            self.button_x = ttk.Button(self, text=str(button), command=_cmd)
-#            self.button_x.grid(row=i+1, column=0, padx=1, pady=1, fill=tk.BOTH)
-            self.button_x.pack(side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+            self.button_x = tk.Button(self, text=str(button), command=_cmd, width=40, highlightbackground='black')
+            self.button_x.pack()#side=tk.BOTTOM, fill=tk.BOTH, expand=True)
         
 
     def button_event(self, x):
@@ -116,6 +93,11 @@ class ButtonMaker(tk.Frame):
         # get the variable 
         plotting_variable = self.xrds.get(x) #.isel()#time=self.move_buttons.thetime.get())
 
+        for axx in [self.canvasobject.ax, 
+                    self.canvasobject.cbax, 
+                    self.canvasobject.histax]:
+
+            axx.clear()
 
         # MOVE THIS SOMEWHERE ELSE SO THAT IT DOESNT HAPPEN EVERY CLICK
         one_len_list = {}
@@ -125,18 +107,26 @@ class ButtonMaker(tk.Frame):
 
         # just go ahead and select these -- makes dim size smaller 
         plotting_variable = plotting_variable.sel(**one_len_list)
-
-# now check if there is a time like dimension
-# time_coord = []
-# possible_time_types = [np.dtype("<M8[ns]")] 
-# for c in plotting_variable.coords:
-# f c.dtype in possible_time_types
-        
-        
+                
         # select the concat dim if it's in there. ..
-        if "CONCAT_DIM" in list(plotting_variable.dims):
-            plotting_variable = plotting_variable.isel(CONCAT_DIM=self.move_buttons.thetime.get())
+        if len(plotting_variable.shape) > 1:
 
+            if "CONCAT_DIM" in list(plotting_variable.dims):
+                plotting_variable = plotting_variable.isel(CONCAT_DIM=self.move_buttons.thetime.get())
+
+            if "Time" in list(plotting_variable.dims):
+                plotting_variable = plotting_variable.isel(Time=self.move_buttons.thetime.get())
+
+            if "time" in list(plotting_variable.dims):
+                plotting_variable = plotting_variable.isel(time=self.move_buttons.thetime.get())
+
+            if "XTIME" in list(plotting_variable.dims):
+                plotting_variable = plotting_variable.isel(XTIME=self.move_buttons.thetime.get())
+
+            if "date" in list(plotting_variable.dims):
+                plotting_variable = plotting_variable.isel(date=self.move_buttons.thetime.get())
+
+        # othersiwse, don't select anything .... 
         # get some info about the plotting variable ...        
         if len(plotting_variable.shape) > 5:
             pass
@@ -144,33 +134,39 @@ class ButtonMaker(tk.Frame):
         if len(plotting_variable.shape) == 4:
             pass 
 
-        if len(plotting_variable.shape) == 3: 
-            plotting_variable.plot(ax=self.canvasobject.ax, 
-                                   add_colorbar=False)
-            self.canvasobject.canvas.draw()
-
+        if len(plotting_variable.shape) == 3:
+            pass 
+   
         if len(plotting_variable.shape) == 2: 
-            plotting_variable.plot(ax=self.canvasobject.ax, 
-                                   add_colorbar=False)
+            a = plotting_variable.plot(ax=self.canvasobject.ax, 
+                                       add_colorbar=False)
+            # add the colorbar 
+            self.canvasobject.fig.colorbar(a, cax=self.canvasobject.cbax)
+
+            # make a histogram
+            plotting_variable.plot.hist(bins=100, ax=self.canvasobject.histax)
+
+            # plot the data...
             self.canvasobject.canvas.draw()
 
         if len(plotting_variable.shape) == 1: 
+            print('h')
             plotting_variable.plot(ax=self.canvasobject.ax)
+
+            # make a histogram
+            plotting_variable.plot.hist(bins=100, ax=self.canvasobject.histax)
+
             self.canvasobject.canvas.draw()
 
 
-        # print the click value 
-        # print()
+# class cbmaker(tk.Frame):
+#     def __init__(self, 
+#                 *args, 
+#                 **kwargs):
+#         super().__init__(*args, **kwargs)
+#         self.spamVar = tk.StringVar()
+#         self.spamCB  = tk.Checkbutton(self, text='A', variable=self.spamVar, onvalue='yes', offvalue='no')
 
-
-class cbmaker(tk.Frame):
-    def __init__(self, 
-                *args, 
-                **kwargs):
-        super().__init__(*args, **kwargs)
-
-        self.spamVar = tk.StringVar()
-        self.spamCB  = tk.Checkbutton(self, text='A', variable=self.spamVar, onvalue='yes', offvalue='no')
 
 class MoveButtoner(tk.Frame):
     def __init__(self, frame):
@@ -181,41 +177,48 @@ class MoveButtoner(tk.Frame):
         _cmd_nxt = lambda x=1 : self.move_timestep(x)
         _cmd_prv = lambda x=-1 : self.move_timestep(x)
 
-        self.next = ttk.Button(frame, text='Next', command=_cmd_nxt)
-        self.prev = ttk.Button(frame, text='Prev', command=_cmd_prv)
-        self.next.pack(fill=tk.BOTH, expand=True, side='left')
-        self.prev.pack(fill=tk.BOTH, expand=True, side='left')
-        
+        self.next = tk.Button(frame, text='Next', command=_cmd_nxt,  width=10, highlightbackground='black')
+        self.prev = tk.Button(frame, text='Prev', command=_cmd_prv,  width=10, highlightbackground='black')
+        self.uupp = tk.Button(frame, text='Up',   command=_cmd_nxt,  width=10, highlightbackground='black')
+        self.down = tk.Button(frame, text='Down', command=_cmd_prv,  width=10, highlightbackground='black')
+
+        self.next.grid(row=0, column=0)
+        self.prev.grid(row=0, column=1)
+        self.uupp.grid(row=0, column=2)
+        self.down.grid(row=0, column=3)
+
     def move_timestep(self,x):    
        newtime = x + self.thetime.get()
        self.thetime.set(newtime)
-       print(self.thetime.get())
 
 class MplMaker(tk.Frame):
 
     def __init__(self, frame):
-        # super().__init__(*args, **kwargs)
-        self.fig = Figure(dpi=100)
-        self.ax = self.fig.add_subplot(111)
+        # build the matplotlib grid
+        self.fig  = plt.figure(constrained_layout=True)
+        spec      = self.fig.add_gridspec(ncols=2, nrows=2, width_ratios=(20,1), height_ratios=(4,1))
+        self.ax     = self.fig.add_subplot(spec[0,0])
+        self.cbax   = self.fig.add_subplot(spec[0,1])       
+        self.histax = self.fig.add_subplot(spec[1,0])       
         self.canvas = FigureCanvasTkAgg(self.fig, frame)
 
     def __call__(self, frame):
         self.canvas.draw()
-        self.canvas.get_tk_widget().pack(side=tk.BOTTOM, 
-                                         fill=tk.BOTH, 
-                                         expand=True)
+        self.canvas.get_tk_widget().grid(column=3, row=2, columnspan=2, rowspan=2, sticky=(N,S,E,W))
+#        self.toolbar = NavigationToolbar2Tk(self.canvas, frame)
+#        self.toolbar.update()
+#        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.canvas._tkcanvas.grid(row=2, column=3, columnspan=2, rowspan=2, sticky=(N,S,E,W))
+        self.canvas._tkcanvas.columnconfigure(3, weight=3)
+        self.canvas._tkcanvas.columnconfigure(4, weight=3)
 
-        self.toolbar = NavigationToolbar2Tk(self.canvas, frame)
-        self.toolbar.update()
-        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-
-
-
-class App(customtkinter.CTk):
+class App(Tk):
 
     def __init__(self, thefile):
         super().__init__()
         ipadding = {'ipadx': 1, 'ipady': .1}
+
+        self.configure(bg='black')
 
         # make the screen show up so it is centered on the screen 
         screen_width = self.winfo_screenwidth()
@@ -224,122 +227,131 @@ class App(customtkinter.CTk):
         center_y = int(screen_height/2 - window_height / 2)
 
         # set the position of the window to the center of the screen
-#        self.geometry(f'{window_width}x{window_height}+{center_x}+{center_y}')
+#        self.geometry(f'{window_width*.5}x{window_height*.5}+{center_x}+{center_y}')
         self.thefile=thefile
        
-
         # read in the xarray stuff and make the buttons 
         datavars, coords = get_varnames(thefile)
         xrds = xreader(thefile) 
         dimensions = get_dimensions(xrds)
-        mapper = MplMaker(self)
+        mapper_frame = tk.Frame(self)
+
+        # MAKE HTE MAP FRAME THING
+        mapper_frame.grid(column=2, row=2, columnspan=6, rowspan=4)
+        mapper = MplMaker(mapper_frame)
 
         # Label across the entire top of the frame 
         if type(thefile) == list:
             headerlabel = ".".join(thefile[0].split(".")[0:-1])+"*"
         else:
             headerlabel = thefile
-        label1 = tk.Label(self, text=headerlabel, bg="green", fg="white")
-        label1.pack(**{'ipadx': 5, 'ipady': 5}, fill=tk.X)
 
-    
-        # check buttons 
-        frame02 = tk.Frame(self,  bg='purple', width=100, height=100)
-        frame02.pack(fill=tk.BOTH, expand=True, side=tk.BOTTOM)              
-        checkbuttons1 = ttk.Checkbutton(frame02, text='foo')
-        # checkbuttons1 = cbmaker(frame02)
-        checkbuttons1.pack(side=tk.BOTTOM)
+        #### very top of the frame, list the name of the files being read 
+        label1 = tk.Label(self,text=headerlabel, bg="green", fg="white")
+        label1.grid(column=0, row=0, columnspan=8, sticky=(N, S, E, W)) 
 
-        frame00 = tk.Frame(self,  bg='orange', width=100, height=100)
-        frame00.pack(fill=tk.BOTH, expand=True, side=tk.TOP)              
+        # have the next and up/down buttons here. second row spanning the whole thing 
+        frame00 = tk.Frame(self, bg='black')
+        frame00.grid(column=0, row=1, columnspan=8, sticky=(N, S, E, W)) 
         move_buttons = MoveButtoner(frame00)
 
-        
-        # 4d variables 
-        if len(dimensions['4d']) > 0:
-            frame4 = tk.Frame(self)
-            frame4.pack(**ipadding, expand=False, fill=tk.Y, side=tk.LEFT)
-            scrollable_body4 = Scrollable(frame4)
-            self.button_frame_4 = ButtonMaker(scrollable_body4,
-                                              column_title='4dVars',
-                                              buttons=dimensions['4d'], 
-                                              xrds=xrds,
-                                              canvasobject=mapper,
-                                              clickers=checkbuttons1,
-                                              move_buttons=move_buttons)
+        # make a big box for labelling stuff before the .... thign 
+        # label4 = tk.Label(self, text='test', bg="purple")
+        # label4.grid(column=0, row=3, columnspan=3, rowspan=2, sticky=(N, S, E, W))
 
-            self.button_frame_4.pack(fill=tk.Y)
-            scrollable_body4.update()
+
+        # 4d variables 
+        lbl = tk.Label(self, text="4dVar", bg='yellow', borderwidth=3, relief="raised", fg="black")
+        lbl.grid(column=0, row=2, sticky=(E, W))
+        frame4 = tk.Frame(self, bg='black')
+        frame4.grid(column=0, row=3)#, sticky=(N, S, E, W))
+        scrollable_body4 = Scrollable(frame4)
+        self.button_frame_4 = ButtonMaker(scrollable_body4,
+                                          column_title='4dVars',
+                                          buttons=dimensions['4d'], 
+                                          xrds=xrds,
+                                          canvasobject=mapper,
+                                          move_buttons=move_buttons)
+
+        self.button_frame_4.pack(fill=tk.Y)
+        scrollable_body4.update()
 
 
         # 3d variables 
-        if len(dimensions['3d']) > 0:
-            frame3 = tk.Frame(self)
-            frame3.pack(**ipadding, expand=False, fill=tk.Y, side=tk.LEFT)
-            scrollable_body3 = Scrollable(frame3)
-            self.button_frame_3 = ButtonMaker(scrollable_body3,
-                                              column_title='3dVars',
-                                              buttons=dimensions['3d'], 
-                                              xrds=xrds,
-                                              canvasobject=mapper,
-                                              clickers=checkbuttons1,
-                                              move_buttons=move_buttons)
-            self.button_frame_3.pack()
-            scrollable_body3.update()
+        lbl = tk.Label(self, text="3dVar", bg='yellow', borderwidth=3, relief="raised", fg="black")
+        lbl.grid(column=1, row=2, sticky=(E, W))
+        frame3 = tk.Frame(self)
+        frame3.grid(column=1, row=3)#, sticky=(N, S, E, W))
+        scrollable_body3 = Scrollable(frame3)
+        self.button_frame_3 = ButtonMaker(scrollable_body3,
+                                            column_title='3dVars',
+                                            buttons=dimensions['3d'], 
+                                            xrds=xrds,
+                                            canvasobject=mapper,
+                                            move_buttons=move_buttons)
+        self.button_frame_3.pack()
+        scrollable_body3.update()
 
 
         # 2d variables 
-        if len(dimensions['2d']) > 0:
-            frame2 = tk.Frame(self)
-            frame2.pack(**ipadding, expand=False, fill=tk.Y, side=tk.LEFT)
-            scrollable_body2 = Scrollable(frame2)
-            self.button_frame_2 = ButtonMaker(scrollable_body2,
-                                              column_title='2dVars',
-                                              buttons=dimensions['2d'], 
-                                              xrds=xrds,
-                                              canvasobject=mapper,
-                                              clickers=checkbuttons1,
-                                              move_buttons=move_buttons)                                      
-            self.button_frame_2.pack()
-            scrollable_body2.update()
+        lbl = tk.Label(self, text="2dVar", bg='yellow', borderwidth=3, relief="raised", fg="black")
+        lbl.grid(column=0, row=4, sticky=(E, W))
+        frame2 = tk.Frame(self)
+        frame2.grid(column=0, row=5)#, sticky=(N, S, E, W))
+        scrollable_body2 = Scrollable(frame2)
+        self.button_frame_2 = ButtonMaker(scrollable_body2,
+                                            column_title='2dVars',
+                                            buttons=dimensions['2d'], 
+                                            xrds=xrds,
+                                            canvasobject=mapper,
+                                            move_buttons=move_buttons)                                      
+        self.button_frame_2.pack()
+        scrollable_body2.update()
 
+        # 1d variables 
+        lbl = tk.Label(self, text="1dVar", bg='yellow', borderwidth=3, relief="raised", fg="black")
+        lbl.grid(column=1, row=4, sticky=(E, W))
+        frame1 = tk.Frame(self)
+        frame1.grid(column=1, row=5)
+        scrollable_body1 = Scrollable(frame1)
+        self.button_frame_1 = ButtonMaker(scrollable_body1,
+                                            column_title='1dVars',
+                                            buttons=dimensions['1d'], 
+                                            xrds=xrds,
+                                            canvasobject=mapper,
+                                            move_buttons=move_buttons)                                       
+        self.button_frame_1.pack()
+        scrollable_body1.update()
 
-        if len(dimensions['1d']) > 0:
-            frame1 = tk.Frame(self)
-            frame1.pack(**ipadding, expand=False, fill=tk.Y, side=tk.LEFT)
-            scrollable_body1 = Scrollable(frame1)
-            self.button_frame_1 = ButtonMaker(scrollable_body1,
-                                              column_title='1dVars',
-                                              buttons=dimensions['1d'], 
-                                              xrds=xrds,
-                                              canvasobject=mapper,
-                                              move_buttons=move_buttons)                                       
-            self.button_frame_1.pack()
-            scrollable_body1.update()
-
-        # DIMENSIONS
-        # frame01 = tk.Frame(self)#  width=.2*window_width, height=.9*window_height)
-        # frame01.pack(**ipadding,  expand=False, fill=tk.Y, side=tk.LEFT)
-        # scrollable_body01    = Scrollable(frame01)
-        # self.button_frame_01 = ButtonMaker(scrollable_body01,
-        #                                    column_title='Dimensions',
-        #                                    buttons=['button', 'button', 'button'], 
-        #                                    xrds=xrds,
-        #                                    canvasobject=mapper,
-        #                                    move_buttons=move_buttons)
-
-#        self.button_frame_01.pack()
-#        scrollable_body01.update()
+       # now add the mapper...
         mapper(self)
-       
-        ### ADD MPL PLOT 
 
 
-        # xrdescription = tk.Label(self, text=str(xrds))
-        # xrdescription.pack(**ipadding, expand=True, fill=tk.BOTH, side=tk.LEFT)
+        # label stuff below the plot
+        # make the text for the box
+        xrtext1 = "\n".join(["%s : %s"%(x, xrds.dims[x]) for x in xrds.dims.keys()])
+        xrtext2 = "\n".join([l[4:] for l in str(xrds.coords).split("\n")[1:]])
+
+        BottomFrame = tk.Frame(self, bg='green')
+        BottomFrame.grid(column=0, row=6, columnspan=9, rowspan=1, sticky=(N, S, E, W))
+
+        # add the dimesnions info 
+        tk.Label(BottomFrame, text='Dimensions',bg='purple').grid(column=0, row=0, sticky=(N, S, E, W))
+        labeldim      = tk.Label(BottomFrame, text=xrtext1, bg='gray')
+        labeldim.grid(column=0, row=1,sticky=(N, S, E, W))
 
 
+        # now add labels and the info itself 
+        tk.Label(BottomFrame, text='Coordinates',bg='gray').grid(column=1, row=0, sticky=(N, S, E, W))
+        labelcoord    = tk.Label(BottomFrame, text=xrtext2)
+        labelcoord.grid(column=1, row=1, sticky=(N, S, E, W))
+        
 
+        # make a drop down menu...
+        variable = StringVar(BottomFrame)
+        variable.set("one") # default value
 
+        w = OptionMenu(BottomFrame, variable, "one", "two", "three")
+        w.grid(column=2, row=0, sticky=(N, S, E, W))
 
-        # make a yellow box next to the 2nd rown of buttons 
+        mainloop()
