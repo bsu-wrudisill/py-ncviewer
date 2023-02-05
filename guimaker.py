@@ -59,6 +59,7 @@ class Scrollable(tk.Frame):
 class ButtonMaker(tk.Frame):
     def __init__(self, 
                  *args, 
+                 clicked_button=None,
                  xrds=None,
                  column_title=None,
                  buttons=None,
@@ -70,6 +71,7 @@ class ButtonMaker(tk.Frame):
 
         super().__init__(*args, **kwargs)
         self.xrds = xrds 
+        self.clicked_button = clicked_button
         self.canvasobject = canvasobject
 #        self.original_size = canvasobject.fig.get_size_inches()
         self.clickers = clickers 
@@ -92,6 +94,11 @@ class ButtonMaker(tk.Frame):
 
         # get the variable 
         plotting_variable = self.xrds.get(x) #.isel()#time=self.move_buttons.thetime.get())
+
+        # get the variable attributed and pass it along ...
+        pv_attrs_str = ["%s : %s"%(x, plotting_variable.attrs[x]) for x in plotting_variable.attrs.keys()]
+        pv_attrs_str = "\n".join(pv_attrs_str)
+        self.clicked_button.set(pv_attrs_str)
 
         for axx in [self.canvasobject.ax, 
                     self.canvasobject.cbax, 
@@ -219,6 +226,8 @@ class App(Tk):
         ipadding = {'ipadx': 1, 'ipady': .1}
 
         self.configure(bg='black')
+        self.clicked_button = tk.Variable(self)
+        self.clicked_button.set("test")
 
         # make the screen show up so it is centered on the screen 
         screen_width = self.winfo_screenwidth()
@@ -270,6 +279,7 @@ class App(Tk):
                                           column_title='4dVars',
                                           buttons=dimensions['4d'], 
                                           xrds=xrds,
+                                          clicked_button=self.clicked_button,
                                           canvasobject=mapper,
                                           move_buttons=move_buttons)
 
@@ -287,6 +297,7 @@ class App(Tk):
                                             column_title='3dVars',
                                             buttons=dimensions['3d'], 
                                             xrds=xrds,
+                                            clicked_button=self.clicked_button,
                                             canvasobject=mapper,
                                             move_buttons=move_buttons)
         self.button_frame_3.pack()
@@ -303,6 +314,7 @@ class App(Tk):
                                             column_title='2dVars',
                                             buttons=dimensions['2d'], 
                                             xrds=xrds,
+                                            clicked_button=self.clicked_button,                                            
                                             canvasobject=mapper,
                                             move_buttons=move_buttons)                                      
         self.button_frame_2.pack()
@@ -318,6 +330,7 @@ class App(Tk):
                                             column_title='1dVars',
                                             buttons=dimensions['1d'], 
                                             xrds=xrds,
+                                            clicked_button=self.clicked_button,
                                             canvasobject=mapper,
                                             move_buttons=move_buttons)                                       
         self.button_frame_1.pack()
@@ -345,13 +358,23 @@ class App(Tk):
         tk.Label(BottomFrame, text='Coordinates',bg='gray').grid(column=1, row=0, sticky=(N, S, E, W))
         labelcoord    = tk.Label(BottomFrame, text=xrtext2)
         labelcoord.grid(column=1, row=1, sticky=(N, S, E, W))
+
+        # get some attributes of the variable that we are looking at... 
+        tk.Label(BottomFrame, text='Variable Attributes', bg='purple').grid(column=2, row=0, sticky=(N, S, E, W))
+        labelcoord    = tk.Label(BottomFrame, textvariable=self.clicked_button)
+        labelcoord.grid(column=2, row=1, sticky=(N, S, E, W))
         
 
-        # make a drop down menu...
-        variable = StringVar(BottomFrame)
-        variable.set("one") # default value
+        # make another frame thing to the right of the main plotting area
+        # make a drop down menu...  
+        RightFrame = tk.Frame(self, bg='red')
+        RightFrame.grid(column=9, row=3, columnspan=2, sticky=(N, S, E, W))
 
-        w = OptionMenu(BottomFrame, variable, "one", "two", "three")
-        w.grid(column=2, row=0, sticky=(N, S, E, W))
+        lbrsp=tk.Label(RightFrame, text="Resample").grid(column=0, row=0, sticky=(N, S, E, W))
+
+        variable = StringVar(RightFrame)
+        variable.set("one") # default value
+        w = OptionMenu(RightFrame, variable, "Month", "Week", "Day", "Hour")
+        w.grid(column=0, row=1, sticky=(N, S, E, W))
 
         mainloop()
