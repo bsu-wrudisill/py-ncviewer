@@ -1,11 +1,11 @@
 from tkinter import *
-from tkinter import ttk
-import customtkinter
 import tkinter as tk
 from tkinter import ttk
-from metaread import get_varnames, xreader, get_dimensions
-import numpy as np 
+import customtkinter
 
+from metaread import get_varnames, xreader, get_dimensions
+
+import numpy as np 
 import matplotlib.pyplot as plt 
 import matplotlib
 matplotlib.use("TkAgg")
@@ -27,11 +27,11 @@ class Scrollable(tk.Frame):
 
     def __init__(self, frame):
         # make the scrollbar thing 
-        scrollbar = tk.Scrollbar(frame, width=4)
+        scrollbar = tk.Scrollbar(frame, width=20, bg='black')
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)# expand=True)
 
         # create hte canvase and add scrolling command 
-        self.canvas = tk.Canvas(frame, yscrollcommand=scrollbar.set, width=80)  # WE HAVE TO SET THIS MANUALLY!!!!
+        self.canvas = tk.Canvas(frame, yscrollcommand=scrollbar.set, width=150) # WE HAVE TO SET THIS MANUALLY!!!!
         self.canvas.pack(expand=True)
         scrollbar.config(command=self.canvas.yview)
         self.canvas.bind('<Configure>', self.__fill_canvas)
@@ -50,23 +50,113 @@ class Scrollable(tk.Frame):
 
     def update(self):
         "Update the canvas and the scrollregion"
-
         self.update_idletasks()
         self.canvas.config(scrollregion=self.canvas.bbox(self.windows_item))
         # print("update")
+
+class MoveButtoner(tk.Frame):
+    def __init__(self, frame):
+        super().__init__()#K*args, **kwargs)
+        self.thetime = tk.IntVar()
+        self.thetime.set(0)
+
+        _cmd_nxt = lambda x=1 : self.move_timestep(x)
+        _cmd_prv = lambda x=-1 : self.move_timestep(x)
+
+        self.next = tk.Button(frame, text='Next', command=_cmd_nxt,  width=10)
+        self.prev = tk.Button(frame, text='Prev', command=_cmd_prv,  width=10)
+        self.uupp = tk.Button(frame, text='Up',   command=_cmd_nxt,  width=10)
+        self.down = tk.Button(frame, text='Down', command=_cmd_prv,  width=10)
+
+        self.next.pack(side=tk.LEFT)#grid(row=0, column=0)
+        self.prev.pack(side=tk.LEFT)#grid(row=0, column=1)
+        self.uupp.pack(side=tk.LEFT)#grid(row=0, column=2)
+        self.down.pack(side=tk.LEFT)#grid(row=0, column=3)
+
+    def move_timestep(self,x):    
+       newtime = x + self.thetime.get()
+       self.thetime.set(newtime)
+
+class ResampleButton(tk.Frame):
+    def __init__(self, frame):
+        super().__init__()#K*args, **kwargs)
+        mb = tk.Menubutton(frame, text="Resample", width=10)
+        mb.pack(side=tk.LEFT)
+        mb.menu =  Menu(mb, tearoff = 0)
+        mb["menu"] =  mb.menu
+
+        resample_freq = tk.Variable()
+        resample_freq.set('-9999')
+
+        mb.menu.add_checkbutton (label="1h",
+                                 command = lambda: resample_freq.set('1h'))
+
+        mb.menu.add_checkbutton (label="12h",
+                                 command = lambda: resample_freq.set('3h'))
+
+        mb.menu.add_checkbutton (label="24h",
+                                 command = lambda: resample_freq.set('24h'))
+
+        mb.menu.add_checkbutton (label="1w",
+                                 command = lambda: resample_freq.set('1w'))
+
+        mb.pack()
+
+        self.resample_freq = resample_freq
+
+
+class StatsButton(tk.Frame):
+    def __init__(self, frame):
+        super().__init__()#K*args, **kwargs)
+        mb = tk.Menubutton(frame, text="Resample", width=10)
+        mb.pack(side=tk.LEFT)
+        mb.menu =  Menu(mb, tearoff = 0)
+        mb["menu"] =  mb.menu
+
+        mayoVar = IntVar()
+        ketchVar = IntVar()
+
+        mb.menu.add_checkbutton (label="mayo",
+                                 variable=mayoVar)
+
+        mb.menu.add_checkbutton (label="ketchup",
+                                 variable=ketchVar )
+
+        mb.pack()
+
+class MplMaker(tk.Frame):
+
+    def __init__(self, frame):
+        # build the matplotlib grid
+        self.fig  = plt.figure(constrained_layout=True)
+        spec      = self.fig.add_gridspec(ncols=2, nrows=2, width_ratios=(20,1), height_ratios=(4,1))
+        self.ax     = self.fig.add_subplot(spec[0,0])
+        self.cbax   = self.fig.add_subplot(spec[0,1])       
+        self.histax = self.fig.add_subplot(spec[1,0])       
+        self.canvas = FigureCanvasTkAgg(self.fig, frame)
+
+    def __call__(self, frame):
+        self.canvas.draw()
+        self.canvas.get_tk_widget().grid(column=3, row=2, columnspan=2, rowspan=2, sticky=(N,S,E,W))
+#        self.toolbar = NavigationToolbar2Tk(self.canvas, frame)
+#        self.toolbar.update()
+#        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
+        self.canvas._tkcanvas.grid(row=2, column=3, columnspan=2, rowspan=2, sticky=(N,S,E,W))
+        self.canvas._tkcanvas.columnconfigure(3, weight=3)
+        self.canvas._tkcanvas.columnconfigure(4, weight=3)
 
 
 class ButtonMaker(tk.Frame):
     def __init__(self, 
                  *args, 
-                 clicked_button=None,
                  xrds=None,
                  column_title=None,
                  buttons=None,
                  header_name=None, 
                  canvasobject=None,
-                 clickers=None,
+                 clicked_button=None,
                  move_buttons=None,
+                 resample_buttons=None,
                  **kwargs):
 
         super().__init__(*args, **kwargs)
@@ -74,15 +164,14 @@ class ButtonMaker(tk.Frame):
         self.clicked_button = clicked_button
         self.canvasobject = canvasobject
 #        self.original_size = canvasobject.fig.get_size_inches()
-        self.clickers = clickers 
         self.move_buttons = move_buttons
-
+        self.resample_buttons = resample_buttons
         # go through each varianble and make a button
         for i, button in enumerate(buttons):   
             _cmd = lambda x=button: self.button_event(x)
 
-            self.button_x = tk.Button(self, text=str(button), command=_cmd, width=40, highlightbackground='black')
-            self.button_x.pack()#side=tk.BOTTOM, fill=tk.BOTH, expand=True)
+            self.button_x = tk.Button(self, text=str(button), command=_cmd, width=60)#, highlightbackground='black')
+            self.button_x.pack(padx=10,pady=2)#side=tk.BOTTOM, fill=tk.BOTH, expand=True)
         
 
     def button_event(self, x):
@@ -157,8 +246,15 @@ class ButtonMaker(tk.Frame):
             self.canvasobject.canvas.draw()
 
         if len(plotting_variable.shape) == 1: 
-            print('h')
-            plotting_variable.plot(ax=self.canvasobject.ax)
+            # resample if necessary ...
+            resample_freq = self.resample_buttons.resample_freq.get()
+
+            if resample_freq == '-9999':
+                print('first')
+                plotting_variable.plot(ax=self.canvasobject.ax)
+            else:
+                print(resample_freq)
+                plotting_variable.resample(time=resample_freq).mean().plot(ax=self.canvasobject.ax)
 
             # make a histogram
             plotting_variable.plot.hist(bins=100, ax=self.canvasobject.histax)
@@ -166,58 +262,6 @@ class ButtonMaker(tk.Frame):
             self.canvasobject.canvas.draw()
 
 
-# class cbmaker(tk.Frame):
-#     def __init__(self, 
-#                 *args, 
-#                 **kwargs):
-#         super().__init__(*args, **kwargs)
-#         self.spamVar = tk.StringVar()
-#         self.spamCB  = tk.Checkbutton(self, text='A', variable=self.spamVar, onvalue='yes', offvalue='no')
-
-
-class MoveButtoner(tk.Frame):
-    def __init__(self, frame):
-        super().__init__()#K*args, **kwargs)
-        self.thetime = tk.IntVar()
-        self.thetime.set(0)
-
-        _cmd_nxt = lambda x=1 : self.move_timestep(x)
-        _cmd_prv = lambda x=-1 : self.move_timestep(x)
-
-        self.next = tk.Button(frame, text='Next', command=_cmd_nxt,  width=10, highlightbackground='black')
-        self.prev = tk.Button(frame, text='Prev', command=_cmd_prv,  width=10, highlightbackground='black')
-        self.uupp = tk.Button(frame, text='Up',   command=_cmd_nxt,  width=10, highlightbackground='black')
-        self.down = tk.Button(frame, text='Down', command=_cmd_prv,  width=10, highlightbackground='black')
-
-        self.next.grid(row=0, column=0)
-        self.prev.grid(row=0, column=1)
-        self.uupp.grid(row=0, column=2)
-        self.down.grid(row=0, column=3)
-
-    def move_timestep(self,x):    
-       newtime = x + self.thetime.get()
-       self.thetime.set(newtime)
-
-class MplMaker(tk.Frame):
-
-    def __init__(self, frame):
-        # build the matplotlib grid
-        self.fig  = plt.figure(constrained_layout=True)
-        spec      = self.fig.add_gridspec(ncols=2, nrows=2, width_ratios=(20,1), height_ratios=(4,1))
-        self.ax     = self.fig.add_subplot(spec[0,0])
-        self.cbax   = self.fig.add_subplot(spec[0,1])       
-        self.histax = self.fig.add_subplot(spec[1,0])       
-        self.canvas = FigureCanvasTkAgg(self.fig, frame)
-
-    def __call__(self, frame):
-        self.canvas.draw()
-        self.canvas.get_tk_widget().grid(column=3, row=2, columnspan=2, rowspan=2, sticky=(N,S,E,W))
-#        self.toolbar = NavigationToolbar2Tk(self.canvas, frame)
-#        self.toolbar.update()
-#        self.canvas._tkcanvas.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-        self.canvas._tkcanvas.grid(row=2, column=3, columnspan=2, rowspan=2, sticky=(N,S,E,W))
-        self.canvas._tkcanvas.columnconfigure(3, weight=3)
-        self.canvas._tkcanvas.columnconfigure(4, weight=3)
 
 class App(Tk):
 
@@ -260,9 +304,12 @@ class App(Tk):
         label1.grid(column=0, row=0, columnspan=8, sticky=(N, S, E, W)) 
 
         # have the next and up/down buttons here. second row spanning the whole thing 
-        frame00 = tk.Frame(self, bg='black')
+        frame00 = tk.Frame(self)
         frame00.grid(column=0, row=1, columnspan=8, sticky=(N, S, E, W)) 
         move_buttons = MoveButtoner(frame00)
+
+        # add this guy...
+        resp_buttons = ResampleButton(frame00)
 
         # make a big box for labelling stuff before the .... thign 
         # label4 = tk.Label(self, text='test', bg="purple")
@@ -272,16 +319,18 @@ class App(Tk):
         # 4d variables 
         lbl = tk.Label(self, text="4dVar", bg='yellow', borderwidth=3, relief="raised", fg="black")
         lbl.grid(column=0, row=2, sticky=(E, W))
-        frame4 = tk.Frame(self, bg='black')
+        frame4 = tk.Frame(self)
         frame4.grid(column=0, row=3)#, sticky=(N, S, E, W))
         scrollable_body4 = Scrollable(frame4)
         self.button_frame_4 = ButtonMaker(scrollable_body4,
                                           column_title='4dVars',
                                           buttons=dimensions['4d'], 
                                           xrds=xrds,
-                                          clicked_button=self.clicked_button,
                                           canvasobject=mapper,
-                                          move_buttons=move_buttons)
+                                          clicked_button=self.clicked_button,
+                                          move_buttons=move_buttons,
+                                          resample_buttons=resp_buttons)
+
 
         self.button_frame_4.pack(fill=tk.Y)
         scrollable_body4.update()
@@ -299,7 +348,9 @@ class App(Tk):
                                             xrds=xrds,
                                             clicked_button=self.clicked_button,
                                             canvasobject=mapper,
-                                            move_buttons=move_buttons)
+                                            move_buttons=move_buttons,
+                                            resample_buttons=resp_buttons)
+
         self.button_frame_3.pack()
         scrollable_body3.update()
 
@@ -314,9 +365,11 @@ class App(Tk):
                                             column_title='2dVars',
                                             buttons=dimensions['2d'], 
                                             xrds=xrds,
-                                            clicked_button=self.clicked_button,                                            
                                             canvasobject=mapper,
-                                            move_buttons=move_buttons)                                      
+                                            clicked_button=self.clicked_button,
+                                            move_buttons=move_buttons,
+                                            resample_buttons=resp_buttons)
+
         self.button_frame_2.pack()
         scrollable_body2.update()
 
@@ -332,7 +385,9 @@ class App(Tk):
                                             xrds=xrds,
                                             clicked_button=self.clicked_button,
                                             canvasobject=mapper,
-                                            move_buttons=move_buttons)                                       
+                                            move_buttons=move_buttons,
+                                            resample_buttons=resp_buttons)
+                                
         self.button_frame_1.pack()
         scrollable_body1.update()
 
@@ -367,14 +422,13 @@ class App(Tk):
 
         # make another frame thing to the right of the main plotting area
         # make a drop down menu...  
-        RightFrame = tk.Frame(self, bg='red')
-        RightFrame.grid(column=9, row=3, columnspan=2, sticky=(N, S, E, W))
+        # RightFrame = tk.Frame(self, bg='red')
+        # RightFrame.grid(column=9, row=2, columnspan=2, sticky=(N, S, E, W))
 
-        lbrsp=tk.Label(RightFrame, text="Resample").grid(column=0, row=0, sticky=(N, S, E, W))
-
-        variable = StringVar(RightFrame)
-        variable.set("one") # default value
-        w = OptionMenu(RightFrame, variable, "Month", "Week", "Day", "Hour")
-        w.grid(column=0, row=1, sticky=(N, S, E, W))
+        # lbrsp=tk.Label(RightFrame, text="Resample").grid(column=0, row=0, sticky=(N, S, E, W))
+        # variable = StringVar(RightFrame)
+        # variable.set("one") # default value
+        # w = OptionMenu(RightFrame, variable, "Month", "Week", "Day", "Hour")
+        # w.grid(column=0, row=1, sticky=(N, S, E, W))
 
         mainloop()
