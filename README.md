@@ -1,6 +1,14 @@
 ### Py-NcViewer
 
-Command-line application for quickly viewing netcdf files using the power of Xarray and Matplotlib. Designed to emulate some of the functionality of the original "Ncview". 
+Command-line application for quickly viewing netcdf files using the power of Xarray (https://docs.xarray.dev/en/stable/index.html) and Matplotlib. Designed to emulate some of the functionality of the original "Ncview". The gui is written in "tkinter" (https://docs.python.org/3/library/tkinter.html) which is old but appears to offer most of the functionality needed for this basic program. Tkinter is also distributed with python. 
+
+Dependencies:
+
+
+Usage:
+The program can take single files or multiple files as input. Wildcard expressions can be used to pass in filenames to the program. The program will try to concatenate the files together using the xr.open_mfdataset (https://docs.xarray.dev/en/stable/generated/xarray.open_mfdataset.html) command.
+
+Examples:
 
 Here are some screenshots of the "beta" version, showing a 2-d field plotted:
 
